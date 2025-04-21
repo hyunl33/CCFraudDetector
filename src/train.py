@@ -71,7 +71,7 @@ def evaluate_model(model, X_test, y_test, model_name):
     plt.ylabel('Precision')
     plt.title('Precision-Recall Curve')
     plt.legend()
-    plt.savefig(f'models/precision_recall_curve.png')
+    plt.savefig('models/precision_recall_curve.png')
     plt.close()
     
     # Plot confusion matrix

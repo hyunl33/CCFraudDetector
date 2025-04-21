@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from predict import FraudDetector
-import json
+
 
 app = Flask(__name__)
 detector = FraudDetector()
