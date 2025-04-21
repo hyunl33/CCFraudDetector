@@ -7,6 +7,7 @@ import joblib
 import json
 import os
 
+
 def generate_synthetic_data(n_samples=10000, fraud_ratio=0.01):
     """
     Generate synthetic credit card transaction data
@@ -17,16 +18,19 @@ def generate_synthetic_data(n_samples=10000, fraud_ratio=0.01):
     # Generate normal transactions
     n_normal = int(n_samples * (1 - fraud_ratio))
     normal_amounts = np.random.exponential(scale=100, size=n_normal)
-    normal_times = np.random.uniform(0, 172800, size=n_normal)  # 48 hours in seconds
+    # 48 hours in seconds
+    normal_times = np.random.uniform(0, 172800, size=n_normal)
     normal_v1 = np.random.normal(0, 1, size=n_normal)
     normal_v2 = np.random.normal(0, 1, size=n_normal)
     
     # Generate fraudulent transactions
     n_fraud = int(n_samples * fraud_ratio)
-    fraud_amounts = np.random.exponential(scale=500, size=n_fraud)  # Higher average amount
+    # Higher average amount for fraud
+    fraud_amounts = np.random.exponential(scale=500, size=n_fraud)
     fraud_times = np.random.uniform(0, 172800, size=n_fraud)
-    fraud_v1 = np.random.normal(-2, 1, size=n_fraud)  # Different distribution
-    fraud_v2 = np.random.normal(2, 1, size=n_fraud)   # Different distribution
+    # Different distribution for fraud
+    fraud_v1 = np.random.normal(-2, 1, size=n_fraud)
+    fraud_v2 = np.random.normal(2, 1, size=n_fraud)
     
     # Combine data
     data = {
@@ -38,6 +42,7 @@ def generate_synthetic_data(n_samples=10000, fraud_ratio=0.01):
     }
     
     return pd.DataFrame(data)
+
 
 def load_data(file_path):
     """
@@ -51,6 +56,7 @@ def load_data(file_path):
     else:
         df = pd.read_csv(file_path)
     return df
+
 
 def preprocess_data(df):
     """
@@ -72,7 +78,9 @@ def preprocess_data(df):
     
     # Handle class imbalance using SMOTE
     smote = SMOTE(random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train_scaled, y_train)
+    X_train_resampled, y_train_resampled = smote.fit_resample(
+        X_train_scaled, y_train
+    )
     
     # Save processed data and scaler
     np.save('data/X_train.npy', X_train_resampled)
@@ -87,6 +95,7 @@ def preprocess_data(df):
     
     return X_train_resampled, X_test_scaled, y_train_resampled, y_test
 
+
 def main():
     # Create data directory if it doesn't exist
     os.makedirs('data', exist_ok=True)
@@ -100,6 +109,7 @@ def main():
     print("Data preprocessing completed successfully!")
     print(f"Training set shape: {X_train.shape}")
     print(f"Testing set shape: {X_test.shape}")
+
 
 if __name__ == "__main__":
     main() 

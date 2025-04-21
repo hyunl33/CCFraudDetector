@@ -1,11 +1,14 @@
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
-from sklearn.metrics import classification_report, roc_auc_score, average_precision_score
+from sklearn.metrics import (
+    classification_report, roc_auc_score, average_precision_score,
+    precision_recall_curve, confusion_matrix
+)
 import joblib
 import matplotlib.pyplot as plt
-from sklearn.metrics import precision_recall_curve, confusion_matrix
 import seaborn as sns
+
 
 def load_data():
     """
@@ -16,6 +19,7 @@ def load_data():
     y_train = np.load('data/y_train.npy')
     y_test = np.load('data/y_test.npy')
     return X_train, X_test, y_train, y_test
+
 
 def train_random_forest(X_train, y_train):
     """
@@ -30,6 +34,7 @@ def train_random_forest(X_train, y_train):
     rf.fit(X_train, y_train)
     return rf
 
+
 def train_xgboost(X_train, y_train):
     """
     Train XGBoost model
@@ -43,6 +48,7 @@ def train_xgboost(X_train, y_train):
     )
     xgb.fit(X_train, y_train)
     return xgb
+
 
 def evaluate_model(model, X_test, y_test, model_name):
     """
@@ -81,14 +87,21 @@ def evaluate_model(model, X_test, y_test, model_name):
     plt.title(f'Confusion Matrix - {model_name}')
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
-    plt.savefig(f'models/confusion_matrix_{model_name.lower().replace(" ", "_")}.png')
+    
+    # Save confusion matrix with shorter filename
+    model_name_safe = model_name.lower().replace(" ", "_")
+    plt.savefig(f'models/confusion_matrix_{model_name_safe}.png')
     plt.close()
+    
+    # Get classification report as dict
+    report_dict = classification_report(y_test, y_pred, output_dict=True)
     
     return {
         'roc_auc': roc_auc,
         'avg_precision': avg_precision,
-        'classification_report': classification_report(y_test, y_pred, output_dict=True)
+        'classification_report': report_dict
     }
+
 
 def main():
     # Load data
@@ -107,10 +120,11 @@ def main():
     
     # Evaluate models
     print("\nEvaluating models...")
-    rf_results = evaluate_model(rf_model, X_test, y_test, "Random Forest")
-    xgb_results = evaluate_model(xgb_model, X_test, y_test, "XGBoost")
+    evaluate_model(rf_model, X_test, y_test, "Random Forest")
+    evaluate_model(xgb_model, X_test, y_test, "XGBoost")
     
     print("\nTraining and evaluation completed successfully!")
+
 
 if __name__ == "__main__":
     main() 
