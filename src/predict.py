@@ -6,9 +6,9 @@ from datetime import datetime
 
 class FraudDetector:
     def __init__(self):
-        # Load models
-        self.rf_model = joblib.load('models/random_forest_model.joblib')
-        self.xgb_model = joblib.load('models/xgboost_model.joblib')
+        # Load trained models
+        self.random_forest = joblib.load('models/random_forest_model.joblib')
+        self.xgboost = joblib.load('models/xgboost_model.joblib')
         self.scaler = joblib.load('models/scaler.joblib')
         
         # Load feature names
@@ -19,7 +19,7 @@ class FraudDetector:
         """
         Preprocess a single transaction
         """
-        # Create feature array
+        # Convert transaction data to numpy array
         features = np.array([
             transaction_data['amount'],
             transaction_data['time'],
@@ -36,23 +36,23 @@ class FraudDetector:
         Make prediction using ensemble of models
         """
         # Preprocess transaction
-        X = self.preprocess_transaction(transaction_data)
+        scaled_features = self.preprocess_transaction(transaction_data)
         
         # Get predictions from both models
-        rf_pred_proba = self.rf_model.predict_proba(X)[0, 1]
-        xgb_pred_proba = self.xgb_model.predict_proba(X)[0, 1]
+        rf_prob = self.random_forest.predict_proba(scaled_features)[0][1]
+        xgb_prob = self.xgboost.predict_proba(scaled_features)[0][1]
         
-        # Ensemble prediction (average of probabilities)
-        fraud_probability = (rf_pred_proba + xgb_pred_proba) / 2
-        is_fraud = fraud_probability > 0.5
+        # Calculate ensemble probability
+        ensemble_prob = (rf_prob + xgb_prob) / 2
+        
+        # Determine if transaction is fraudulent
+        is_fraud = ensemble_prob > 0.5
         
         return {
             'is_fraud': bool(is_fraud),
-            'fraud_probability': float(fraud_probability),
-            'model_details': {
-                'random_forest_probability': float(rf_pred_proba),
-                'xgboost_probability': float(xgb_pred_proba)
-            },
+            'fraud_probability': float(ensemble_prob),
+            'random_forest_probability': float(rf_prob),
+            'xgboost_probability': float(xgb_prob),
             'timestamp': datetime.now().isoformat()
         }
 

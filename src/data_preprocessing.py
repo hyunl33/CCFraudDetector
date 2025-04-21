@@ -1,50 +1,43 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 import joblib
+import json
 import os
 
 def generate_synthetic_data(n_samples=10000, fraud_ratio=0.01):
     """
     Generate synthetic credit card transaction data
     """
+    # Set random seed for reproducibility
     np.random.seed(42)
     
     # Generate normal transactions
     n_normal = int(n_samples * (1 - fraud_ratio))
-    n_fraud = n_samples - n_normal
+    normal_amounts = np.random.exponential(scale=100, size=n_normal)
+    normal_times = np.random.uniform(0, 172800, size=n_normal)  # 48 hours in seconds
+    normal_v1 = np.random.normal(0, 1, size=n_normal)
+    normal_v2 = np.random.normal(0, 1, size=n_normal)
     
-    # Generate features for normal transactions
-    normal_amount = np.random.normal(100, 50, n_normal)
-    normal_time = np.random.normal(0, 1, n_normal)
-    normal_v1 = np.random.normal(0, 1, n_normal)
-    normal_v2 = np.random.normal(0, 1, n_normal)
+    # Generate fraudulent transactions
+    n_fraud = int(n_samples * fraud_ratio)
+    fraud_amounts = np.random.exponential(scale=500, size=n_fraud)  # Higher average amount
+    fraud_times = np.random.uniform(0, 172800, size=n_fraud)
+    fraud_v1 = np.random.normal(-2, 1, size=n_fraud)  # Different distribution
+    fraud_v2 = np.random.normal(2, 1, size=n_fraud)   # Different distribution
     
-    # Generate features for fraud transactions
-    fraud_amount = np.random.normal(500, 200, n_fraud)  # Higher amounts
-    fraud_time = np.random.normal(2, 1, n_fraud)  # Different time distribution
-    fraud_v1 = np.random.normal(2, 1, n_fraud)  # Different feature distribution
-    fraud_v2 = np.random.normal(-2, 1, n_fraud)  # Different feature distribution
+    # Combine data
+    data = {
+        'amount': np.concatenate([normal_amounts, fraud_amounts]),
+        'time': np.concatenate([normal_times, fraud_times]),
+        'v1': np.concatenate([normal_v1, fraud_v1]),
+        'v2': np.concatenate([normal_v2, fraud_v2]),
+        'is_fraud': np.concatenate([np.zeros(n_normal), np.ones(n_fraud)])
+    }
     
-    # Combine normal and fraud transactions
-    amount = np.concatenate([normal_amount, fraud_amount])
-    time = np.concatenate([normal_time, fraud_time])
-    v1 = np.concatenate([normal_v1, fraud_v1])
-    v2 = np.concatenate([normal_v2, fraud_v2])
-    is_fraud = np.concatenate([np.zeros(n_normal), np.ones(n_fraud)])
-    
-    # Create DataFrame
-    df = pd.DataFrame({
-        'amount': amount,
-        'time': time,
-        'v1': v1,
-        'v2': v2,
-        'is_fraud': is_fraud
-    })
-    
-    return df
+    return pd.DataFrame(data)
 
 def load_data(file_path):
     """
@@ -61,44 +54,38 @@ def load_data(file_path):
 
 def preprocess_data(df):
     """
-    Preprocess the data:
-    1. Handle missing values
-    2. Scale numerical features
-    3. Split into features and target
+    Preprocess the data for model training
     """
-    # Drop any rows with missing values
-    df = df.dropna()
-    
-    # Separate features and target
+    # Split features and target
     X = df.drop('is_fraud', axis=1)
     y = df['is_fraud']
     
-    # Scale numerical features
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    # Split into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
     
-    # Save the scaler for later use
-    os.makedirs('models', exist_ok=True)
+    # Scale features
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # Handle class imbalance using SMOTE
+    smote = SMOTE(random_state=42)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train_scaled, y_train)
+    
+    # Save processed data and scaler
+    np.save('data/X_train.npy', X_train_resampled)
+    np.save('data/X_test.npy', X_test_scaled)
+    np.save('data/y_train.npy', y_train_resampled)
+    np.save('data/y_test.npy', y_test)
     joblib.dump(scaler, 'models/scaler.joblib')
     
-    return X_scaled, y
-
-def split_data(X, y, test_size=0.2, random_state=42):
-    """
-    Split the data into training and testing sets
-    """
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
-    )
-    return X_train, X_test, y_train, y_test
-
-def handle_imbalance(X_train, y_train):
-    """
-    Handle class imbalance using SMOTE
-    """
-    smote = SMOTE(random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    return X_train_resampled, y_train_resampled
+    # Save feature names
+    with open('models/feature_names.json', 'w') as f:
+        json.dump(X.columns.tolist(), f)
+    
+    return X_train_resampled, X_test_scaled, y_train_resampled, y_test
 
 def main():
     # Create data directory if it doesn't exist
@@ -108,22 +95,10 @@ def main():
     df = load_data('data/synthetic_fraud_dataset.csv')
     
     # Preprocess data
-    X, y = preprocess_data(df)
-    
-    # Split data
-    X_train, X_test, y_train, y_test = split_data(X, y)
-    
-    # Handle class imbalance
-    X_train_resampled, y_train_resampled = handle_imbalance(X_train, y_train)
-    
-    # Save processed data
-    np.save('data/X_train.npy', X_train_resampled)
-    np.save('data/X_test.npy', X_test)
-    np.save('data/y_train.npy', y_train_resampled)
-    np.save('data/y_test.npy', y_test)
+    X_train, X_test, y_train, y_test = preprocess_data(df)
     
     print("Data preprocessing completed successfully!")
-    print(f"Training set shape: {X_train_resampled.shape}")
+    print(f"Training set shape: {X_train.shape}")
     print(f"Testing set shape: {X_test.shape}")
 
 if __name__ == "__main__":

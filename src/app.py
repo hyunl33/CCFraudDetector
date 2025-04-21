@@ -15,18 +15,18 @@ def home():
 def predict():
     try:
         # Get transaction data from request
-        transaction_data = request.get_json()
+        data = request.get_json()
         
         # Validate input
         required_fields = ['amount', 'time', 'v1', 'v2']
         for field in required_fields:
-            if field not in transaction_data:
+            if field not in data:
                 return jsonify({
                     'error': f'Missing required field: {field}'
                 }), 400
         
         # Make prediction
-        result = detector.predict(transaction_data)
+        result = detector.predict(data)
         return jsonify(result)
     
     except Exception as e:
@@ -39,16 +39,16 @@ def predict():
 def batch_predict():
     try:
         # Get multiple transactions
-        transactions = request.get_json()
+        data = request.get_json()
         
-        if not isinstance(transactions, list):
+        if not isinstance(data, list):
             return jsonify({
                 'error': 'Input must be a list of transactions'
             }), 400
         
         # Process each transaction
         results = []
-        for transaction in transactions:
+        for transaction in data:
             result = detector.predict(transaction)
             results.append(result)
         

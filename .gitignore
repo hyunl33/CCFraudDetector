@@ -33,9 +33,9 @@ env/
 
 # Data and Models
 data/*.npy
-data/*.csv
 models/*.joblib
 models/*.png
+models/*.json
 
 # Logs
 *.log 
