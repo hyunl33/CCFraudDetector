@@ -31,6 +31,11 @@ env/
 *.swp
 *.swo
 
+# R
+.Rhistory
+.RData
+.Ruserdata
+
 # Data and Models
 data/*.npy
 models/*.joblib
